@@ -162,3 +162,55 @@ def test_candidate_comparison_matrix(client, auth_headers):
     # Test validation: invalid candidate count
     res_invalid = client.post("/api/v1/candidates/compare", json={"application_ids": [app_ids[0]]}, headers=auth_headers)
     assert res_invalid.status_code == 422
+
+def test_candidate_communication_flow(client, auth_headers):
+    candidates = client.get("/api/v1/candidates", headers=auth_headers).json()["items"]
+    app_id = candidates[0]["application_id"]
+
+    # 1. Preview Interview Invitation
+    prev_res = client.post("/api/v1/communications/preview", json={
+        "application_id": app_id,
+        "template_type": "INTERVIEW_INVITATION"
+    }, headers=auth_headers)
+    assert prev_res.status_code == 200
+    prev_data = prev_res.json()
+    assert "Invitation to Interview" in prev_data["subject"]
+    assert "technical conversation" in prev_data["body"]
+    assert prev_data["recipient_email"] is not None
+
+    # 2. Preview Missing Competency Clarification
+    clar_res = client.post("/api/v1/communications/preview", json={
+        "application_id": app_id,
+        "template_type": "COMPETENCY_CLARIFICATION"
+    }, headers=auth_headers)
+    assert clar_res.status_code == 200
+    assert "clarification" in clar_res.json()["body"]
+
+    # 3. Send without recruiter confirmation -> Must fail with 400 (HITL constraint)
+    send_payload = {
+        "application_id": app_id,
+        "template_type": "INTERVIEW_INVITATION",
+        "recipient_email": prev_data["recipient_email"],
+        "recipient_name": prev_data["recipient_name"],
+        "subject": prev_data["subject"],
+        "body": prev_data["body"],
+        "confirmed_by_recruiter": False
+    }
+    fail_res = client.post("/api/v1/communications/send", json=send_payload, headers=auth_headers)
+    assert fail_res.status_code == 400
+    assert "Human-in-the-Loop" in fail_res.json()["detail"]
+
+    # 4. Send with recruiter confirmation -> Succeeds
+    send_payload["confirmed_by_recruiter"] = True
+    success_res = client.post("/api/v1/communications/send", json=send_payload, headers=auth_headers)
+    assert success_res.status_code == 200
+    sent_data = success_res.json()
+    assert sent_data["status"] == "SENT"
+    assert "id" in sent_data
+
+    # 5. Fetch candidate communication history
+    hist_res = client.get(f"/api/v1/communications/{app_id}", headers=auth_headers)
+    assert hist_res.status_code == 200
+    hist = hist_res.json()
+    assert len(hist) >= 1
+    assert hist[0]["subject"] == prev_data["subject"]

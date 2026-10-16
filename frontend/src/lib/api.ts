@@ -12,6 +12,10 @@ import {
   WebhookSubscription,
   WebhookCreate,
   CandidateComparisonResponse,
+  EmailPreviewRequest,
+  EmailPreviewResponse,
+  SendEmailRequest,
+  CommunicationLogResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
@@ -270,6 +274,25 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ application_ids: applicationIds }),
     });
+  }
+
+  // Candidate Communication Hub
+  async previewCandidateEmail(req: EmailPreviewRequest): Promise<EmailPreviewResponse> {
+    return this.request<EmailPreviewResponse>('/communications/preview', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  }
+
+  async sendCandidateEmail(req: SendEmailRequest): Promise<CommunicationLogResponse> {
+    return this.request<CommunicationLogResponse>('/communications/send', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  }
+
+  async getCandidateCommunications(applicationId: string): Promise<CommunicationLogResponse[]> {
+    return this.request<CommunicationLogResponse[]>(`/communications/${applicationId}`);
   }
 }
 

@@ -169,6 +169,7 @@ class JobApplication(Base):
     notes = relationship("CandidateNote", back_populates="application", cascade="all, delete-orphan", order_by="desc(CandidateNote.created_at)")
     audit_logs = relationship("AuditLog", back_populates="application", cascade="all, delete-orphan")
     interview_guides = relationship("InterviewGuide", back_populates="application", cascade="all, delete-orphan")
+    communications = relationship("CommunicationLog", back_populates="application", cascade="all, delete-orphan", order_by="desc(CommunicationLog.sent_at)")
 
 class MatchResult(Base):
     __tablename__ = "match_results"
@@ -265,3 +266,21 @@ class InterviewGuide(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     application = relationship("JobApplication", back_populates="interview_guides")
+
+class CommunicationLog(Base):
+    __tablename__ = "communication_logs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    application_id = Column(String(36), ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    recipient_email = Column(String(255), nullable=False)
+    recipient_name = Column(String(255), nullable=False)
+    template_type = Column(String(50), nullable=False)
+    subject = Column(String(255), nullable=False)
+    body = Column(Text, nullable=False)
+    status = Column(String(50), default="SENT")
+    sent_at = Column(DateTime(timezone=True), default=utc_now)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    application = relationship("JobApplication", back_populates="communications")
+    sender = relationship("User")

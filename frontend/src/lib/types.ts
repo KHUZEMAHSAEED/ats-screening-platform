@@ -319,3 +319,41 @@ export interface CandidateComparisonResponse {
   criteria_matrix: ComparisonCriterionMatch[];
   executive_summary: string;
 }
+
+export interface EmailPreviewRequest {
+  application_id: string;
+  template_type: 'INTERVIEW_INVITATION' | 'COMPETENCY_CLARIFICATION' | 'RESPECTFUL_REJECTION' | 'OFFER_OR_NEXT_STEPS' | 'CUSTOM';
+  custom_note?: string;
+}
+
+export interface EmailPreviewResponse {
+  template_type: string;
+  recipient_name: string;
+  recipient_email: string;
+  subject: string;
+  body: string;
+  placeholders: Record<string, string>;
+}
+
+export interface SendEmailRequest {
+  application_id: string;
+  template_type: string;
+  recipient_email: string;
+  recipient_name: string;
+  subject: string;
+  body: string;
+  confirmed_by_recruiter: boolean;
+}
+
+export interface CommunicationLogResponse {
+  id: string;
+  application_id: string;
+  recipient_name: string;
+  recipient_email: string;
+  template_type: string;
+  subject: string;
+  body: string;
+  status: string;
+  sent_at: string;
+  sender_name?: string;
+}

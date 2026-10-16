@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CandidateDetail, InterviewGuideResponse } from '@/lib/types';
+import { CandidateDetail, InterviewGuideResponse, CommunicationLogResponse } from '@/lib/types';
 import { formatDate, getRecommendationBadge, getDecisionBadge, getScoreColor } from '@/lib/utils';
 import { ResumeViewer } from '@/components/ResumeViewer';
 import { ScoreBreakdown } from '@/components/ScoreBreakdown';
 import { DecisionModal } from '@/components/DecisionModal';
 import { AuditTimeline } from '@/components/AuditTimeline';
+import { EmailModal } from '@/components/EmailModal';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -30,6 +31,7 @@ import {
   RefreshCw,
   Copy,
   Check,
+  Mail,
 } from 'lucide-react';
 
 export default function CandidateDetailPage() {
@@ -38,11 +40,14 @@ export default function CandidateDetailPage() {
   const applicationId = params?.id as string;
 
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null);
-  const [activeTab, setActiveTab] = useState<'screening' | 'profile' | 'interviews' | 'notes' | 'audit'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'profile' | 'interviews' | 'notes' | 'comms' | 'audit'>('screening');
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
   const [interviewGuide, setInterviewGuide] = useState<InterviewGuideResponse | null>(null);
   const [isLoadingGuide, setIsLoadingGuide] = useState(false);
+  const [communications, setCommunications] = useState<CommunicationLogResponse[]>([]);
+  const [isLoadingComms, setIsLoadingComms] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [newNoteText, setNewNoteText] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
@@ -57,6 +62,18 @@ export default function CandidateDetailPage() {
       console.error('Error loading candidate detail:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadCommunications = async () => {
+    try {
+      setIsLoadingComms(true);
+      const data = await api.getCandidateCommunications(applicationId);
+      setCommunications(data);
+    } catch (err) {
+      console.error('Failed to load communications:', err);
+    } finally {
+      setIsLoadingComms(false);
     }
   };
 
@@ -77,12 +94,15 @@ export default function CandidateDetailPage() {
   useEffect(() => {
     if (applicationId) {
       loadData(blindMode);
+      loadCommunications();
     }
   }, [applicationId, blindMode]);
 
   useEffect(() => {
     if (activeTab === 'interviews' && !interviewGuide && applicationId) {
       loadInterviewGuide();
+    } else if (activeTab === 'comms' && applicationId) {
+      loadCommunications();
     }
   }, [activeTab, applicationId]);
 
@@ -201,6 +221,14 @@ export default function CandidateDetailPage() {
             {blindMode ? 'Blind Review Active' : 'Enable Blind Review'}
           </button>
           <button
+            onClick={() => setIsEmailModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 shadow-sm transition-colors"
+            title="Compose and dispatch personalized candidate communication"
+          >
+            <Mail className="h-4 w-4 text-indigo-600" />
+            Contact Candidate
+          </button>
+          <button
             onClick={() => setIsDecisionModalOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors"
           >
@@ -252,6 +280,17 @@ export default function CandidateDetailPage() {
           }`}
         >
           HR Notes ({candidate.notes?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveTab('comms')}
+          className={`flex items-center gap-1.5 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === 'comms'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Mail className="h-3.5 w-3.5 text-indigo-600" />
+          Communications ({communications.length})
         </button>
         <button
           onClick={() => setActiveTab('audit')}
@@ -549,6 +588,88 @@ export default function CandidateDetailPage() {
         </div>
       )}
 
+      {/* TAB: Candidate Communication History */}
+      {activeTab === 'comms' && (
+        <div className="space-y-6 max-w-4xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Candidate Communication Logs
+                </h3>
+              </div>
+              <p className="mt-1 text-xs text-slate-600">
+                Chronological record of interview invitations, clarification inquiries, and decision notices dispatched to {candidate.candidate_name}.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsEmailModalOpen(true)}
+              className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Compose New Email
+            </button>
+          </div>
+
+          {isLoadingComms ? (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+            </div>
+          ) : communications.length > 0 ? (
+            <div className="space-y-3">
+              {communications.map((msg) => (
+                <div
+                  key={msg.id}
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3 transition-all hover:border-indigo-200"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
+                        {msg.template_type.replace(/_/g, ' ')}
+                      </span>
+                      <span className="font-bold text-slate-900 text-xs">
+                        {msg.subject}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                      <span>Sender: <strong className="text-slate-700">{msg.sender_name || 'HR Recruiter'}</strong></span>
+                      <span>·</span>
+                      <span>{formatDate(msg.sent_at)}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-700 font-sans whitespace-pre-wrap leading-relaxed bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+                    {msg.body}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span>Recipient: {msg.recipient_name} &lt;{msg.recipient_email}&gt;</span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Dispatched Successfully
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-xs text-slate-500 space-y-3">
+              <Mail className="h-8 w-8 text-slate-300 mx-auto" />
+              <p className="font-medium text-slate-600">No communication logs recorded for this applicant yet.</p>
+              <button
+                onClick={() => setIsEmailModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Draft First Message
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TAB 4: Audit Trail */}
       {activeTab === 'audit' && (
         <div className="max-w-3xl">
@@ -577,6 +698,16 @@ export default function CandidateDetailPage() {
         isOpen={isDecisionModalOpen}
         onClose={() => setIsDecisionModalOpen(false)}
         onSuccess={loadData}
+      />
+
+      {/* Candidate Communication Modal */}
+      <EmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        applicationId={candidate.application_id}
+        candidateName={candidate.candidate_name}
+        candidateEmail={candidate.email}
+        onSuccess={loadCommunications}
       />
     </div>
   );

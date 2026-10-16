@@ -1,0 +1,39 @@
+# Virtual Environment
+venv/
+backend/venv/
+.venv/
+env/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+backend/.pytest_cache/
+
+# Databases & local uploads
+*.db
+*.sqlite
+backend/ats.db
+backend/uploads/
+uploads/
+
+# Node.js & Next.js build
+node_modules/
+frontend/node_modules/
+frontend/.next/
+.next/
+out/
+build/
+dist/
+
+# Logs & Environment
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.production
+.DS_Store
+Thumbs.db

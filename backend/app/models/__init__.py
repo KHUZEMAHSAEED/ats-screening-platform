@@ -168,6 +168,7 @@ class JobApplication(Base):
     decisions = relationship("HRDecision", back_populates="application", cascade="all, delete-orphan", order_by="desc(HRDecision.created_at)")
     notes = relationship("CandidateNote", back_populates="application", cascade="all, delete-orphan", order_by="desc(CandidateNote.created_at)")
     audit_logs = relationship("AuditLog", back_populates="application", cascade="all, delete-orphan")
+    interview_guides = relationship("InterviewGuide", back_populates="application", cascade="all, delete-orphan")
 
 class MatchResult(Base):
     __tablename__ = "match_results"
@@ -243,3 +244,24 @@ class ProcessingTask(Base):
     results = Column(JSON, default=list)  # list of {filename, status, error, candidate_id}
     created_at = Column(DateTime(timezone=True), default=utc_now)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+class WebhookSubscription(Base):
+    __tablename__ = "webhook_subscriptions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    url = Column(String(512), nullable=False)
+    secret = Column(String(128), nullable=False)
+    event_types = Column(JSON, default=list)  # ["candidate.screened", "hr.decision.committed", "job.created"]
+    is_active = Column(Boolean, default=True)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+class InterviewGuide(Base):
+    __tablename__ = "interview_guides"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    application_id = Column(String(36), ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    questions = Column(JSON, default=list)  # list of {question, target_gap, expected_answer, suggested_rubric}
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    application = relationship("JobApplication", back_populates="interview_guides")

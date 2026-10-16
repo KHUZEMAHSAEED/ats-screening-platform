@@ -30,6 +30,7 @@ def list_candidates(
     sort_order: str = Query("desc"),    # "asc", "desc"
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
+    blind_mode: bool = Query(False, description="Enable blind screening mode to mask candidate personal details"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -81,13 +82,19 @@ def list_candidates(
         missing_mand = match.missing_mandatory if match and match.missing_mandatory else []
         total_mand = matched_mand_count + len(missing_mand)
 
+        # Apply Blind Screening Masking if enabled
+        anon_label = cand.anonymized_id or cand.id[:8]
+        cand_name = f"Candidate #{anon_label}" if blind_mode else (cand.full_name or "Anonymous Candidate")
+        cand_email = None if blind_mode else cand.email
+        cand_phone = None if blind_mode else cand.phone
+
         items.append(CandidateListItem(
             application_id=app.id,
             candidate_id=cand.id,
-            candidate_name=cand.full_name or "Anonymous Candidate",
-            anonymized_id=cand.anonymized_id or cand.id[:8],
-            email=cand.email,
-            phone=cand.phone,
+            candidate_name=cand_name,
+            anonymized_id=anon_label,
+            email=cand_email,
+            phone=cand_phone,
             job_id=job.id,
             job_title=job.title,
             job_department=job.department,
@@ -112,6 +119,7 @@ def list_candidates(
 @router.get("/{application_id}", response_model=CandidateDetailResponse)
 def get_candidate_detail(
     application_id: str,
+    blind_mode: bool = Query(False, description="Enable blind screening mode to mask candidate personal details"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -153,14 +161,35 @@ def get_candidate_detail(
             created_at=n.created_at
         ))
 
+    # Apply Blind Screening Masking
+    anon_label = cand.anonymized_id or cand.id[:8]
+    cand_name = f"Candidate #{anon_label}" if blind_mode else (cand.full_name or "Anonymous Candidate")
+    cand_email = "[REDACTED (Blind Review Mode)]" if blind_mode else cand.email
+    cand_phone = "[REDACTED]" if blind_mode else cand.phone
+    cand_location = "[REDACTED]" if blind_mode else cand.location
+
+    parsed_resp = None
+    if parsed:
+        parsed_resp = ParsedResumeData.model_validate(parsed)
+        if blind_mode:
+            # Mask university names to prevent prestige bias
+            masked_edu = []
+            for edu in parsed_resp.education:
+                masked_edu.append({
+                    "degree": edu.get("degree", "Degree"),
+                    "institution": "[REDACTED University/College]",
+                    "graduation_year": None
+                })
+            parsed_resp.education = masked_edu
+
     return CandidateDetailResponse(
         application_id=app.id,
         candidate_id=cand.id,
-        candidate_name=cand.full_name or "Anonymous Candidate",
-        anonymized_id=cand.anonymized_id or cand.id[:8],
-        email=cand.email,
-        phone=cand.phone,
-        location=cand.location,
+        candidate_name=cand_name,
+        anonymized_id=anon_label,
+        email=cand_email,
+        phone=cand_phone,
+        location=cand_location,
         job_id=job.id,
         job_title=job.title,
         job_department=job.department,
@@ -169,7 +198,7 @@ def get_candidate_detail(
         processing_status=app.processing_status,
         applied_at=app.created_at,
         resume=ResumeDocumentResponse.model_validate(resume),
-        parsed_data=ParsedResumeData.model_validate(parsed) if parsed else None,
+        parsed_data=parsed_resp,
         match_result=MatchResultResponse.model_validate(match) if match else None,
         decisions=dec_responses,
         notes=note_responses

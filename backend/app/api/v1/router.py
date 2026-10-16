@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
-    auth, jobs, resumes, candidates, decisions, notes, audit, export, stats, matching
+    auth, jobs, resumes, candidates, decisions, notes, audit, export, stats, matching,
+    compliance, interviews, webhooks, rediscovery
 )
 
 api_router = APIRouter()
@@ -15,3 +16,7 @@ api_router.include_router(matching.router, prefix="/matching", tags=["Matching E
 api_router.include_router(stats.router, prefix="/stats", tags=["Dashboard Statistics"])
 api_router.include_router(audit.router, prefix="/audit", tags=["Audit Trail"])
 api_router.include_router(export.router, prefix="/export", tags=["Export"])
+api_router.include_router(compliance.router, prefix="/compliance", tags=["Compliance & Bias Auditing"])
+api_router.include_router(interviews.router, prefix="/interviews", tags=["AI Interview Guides"])
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Enterprise Webhooks"])
+api_router.include_router(rediscovery.router, prefix="/rediscovery", tags=["Talent Rediscovery"])

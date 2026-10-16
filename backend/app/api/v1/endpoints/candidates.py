@@ -14,6 +14,8 @@ from app.schemas.candidate import (
 )
 from app.schemas.matching import MatchResultResponse
 from app.schemas.decision import HRDecisionResponse, CandidateNoteResponse
+from app.schemas.comparison import ComparisonRequest, CandidateComparisonResponse
+from app.services.comparison_service import compare_candidates_service
 
 router = APIRouter()
 
@@ -114,6 +116,24 @@ def list_candidates(
         page=page,
         page_size=page_size,
         items=items
+    )
+
+@router.post("/compare", response_model=CandidateComparisonResponse)
+def compare_candidates(
+    req: ComparisonRequest,
+    blind_mode: bool = Query(False, description="Enable blind screening mode to mask candidate personal details"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Side-by-Side Candidate Comparison Matrix:
+    Evaluates 2 to 4 candidate applications against job criteria,
+    producing a granular side-by-side competency grid and executive calibration synthesis.
+    """
+    return compare_candidates_service(
+        db=db,
+        application_ids=req.application_ids,
+        blind_mode=blind_mode
     )
 
 @router.get("/{application_id}", response_model=CandidateDetailResponse)

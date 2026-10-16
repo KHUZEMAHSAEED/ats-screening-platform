@@ -280,3 +280,42 @@ export interface WebhookCreate {
   event_types: string[];
   description?: string;
 }
+
+export interface ComparisonCriterionMatch {
+  name: string;
+  category: string;
+  min_years?: number;
+  candidate_matches: Record<string, boolean>;
+  candidate_evidence: Record<string, string | null>;
+}
+
+export interface CandidateComparisonItem {
+  application_id: string;
+  candidate_id: string;
+  candidate_name: string;
+  anonymized_id: string;
+  email?: string;
+  overall_score: number;
+  recommendation_status: string;
+  hr_decision: string;
+  total_experience_years: number;
+  mandatory_score: number;
+  preferred_score: number;
+  experience_score: number;
+  qualification_score: number;
+  matched_mandatory_count: number;
+  total_mandatory_count: number;
+  top_skills: string[];
+  education_degree?: string;
+  education_institution?: string;
+  extraction_method: string;
+}
+
+export interface CandidateComparisonResponse {
+  job_id: string;
+  job_title: string;
+  job_department: string;
+  candidates: CandidateComparisonItem[];
+  criteria_matrix: ComparisonCriterionMatch[];
+  executive_summary: string;
+}

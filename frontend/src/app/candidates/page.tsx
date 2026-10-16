@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { CandidateListItem, Job } from '@/lib/types';
 import { CandidateTable } from '@/components/CandidateTable';
-import { Search, Download, Filter, RefreshCw, Eye, EyeOff, Shield } from 'lucide-react';
+import { Search, Download, Filter, RefreshCw, Eye, EyeOff, Shield, Scale, X } from 'lucide-react';
 
 export default function CandidatesDirectoryPage() {
   const [candidates, setCandidates] = useState<CandidateListItem[]>([]);
@@ -14,11 +15,32 @@ export default function CandidatesDirectoryPage() {
   const [selectedDecision, setSelectedDecision] = useState('');
   const [search, setSearch] = useState('');
   const [blindMode, setBlindMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const pageSize = 15;
+
+  const handleToggleSelect = (appId: string) => {
+    if (selectedIds.includes(appId)) {
+      setSelectedIds(selectedIds.filter((id) => id !== appId));
+    } else {
+      if (selectedIds.length >= 4) {
+        alert('You can select a maximum of 4 candidates for head-to-head comparison.');
+        return;
+      }
+      setSelectedIds([...selectedIds, appId]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === candidates.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(candidates.slice(0, 4).map((c) => c.application_id));
+    }
+  };
 
   const fetchCandidates = async () => {
     try {
@@ -171,7 +193,13 @@ export default function CandidatesDirectoryPage() {
       </div>
 
       {/* Candidate Table */}
-      <CandidateTable candidates={candidates} isLoading={isLoading} />
+      <CandidateTable
+        candidates={candidates}
+        isLoading={isLoading}
+        selectedIds={selectedIds}
+        onToggleSelect={handleToggleSelect}
+        onSelectAll={handleSelectAll}
+      />
 
       {/* Pagination */}
       {total > pageSize && (
@@ -198,6 +226,47 @@ export default function CandidatesDirectoryPage() {
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
             >
               Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Side-by-Side Comparison Dock */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-900/95 px-5 py-3 text-xs text-white shadow-2xl backdrop-blur-md ring-1 ring-white/10 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 font-bold text-white text-[11px]">
+              {selectedIds.length}
+            </span>
+            <span className="font-semibold">
+              {selectedIds.length === 1 ? '1 candidate selected' : `${selectedIds.length} candidates selected`}
+            </span>
+            <span className="text-slate-400">(2 to 4 required)</span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-700" />
+
+          <div className="flex items-center gap-2">
+            {selectedIds.length >= 2 ? (
+              <Link
+                href={`/candidates/compare?ids=${selectedIds.join(',')}${blindMode ? '&blind_mode=true' : ''}`}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-500 shadow-md shadow-indigo-500/25 transition-colors"
+              >
+                <Scale className="h-4 w-4" />
+                Compare Head-to-Head ({selectedIds.length})
+              </Link>
+            ) : (
+              <span className="rounded-xl bg-slate-800 px-4 py-2 font-semibold text-slate-500 cursor-not-allowed">
+                Select 1 more to compare
+              </span>
+            )}
+
+            <button
+              onClick={() => setSelectedIds([])}
+              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Clear selection"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>

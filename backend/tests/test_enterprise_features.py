@@ -136,3 +136,29 @@ def test_talent_rediscovery(client, auth_headers):
     assert data["job_id"] == target_job["id"]
     assert "candidates" in data
     assert isinstance(data["candidates"], list)
+
+def test_candidate_comparison_matrix(client, auth_headers):
+    candidates = client.get("/api/v1/candidates", headers=auth_headers).json()["items"]
+    assert len(candidates) >= 2
+    app_ids = [candidates[0]["application_id"], candidates[1]["application_id"]]
+
+    # Normal comparison
+    res = client.post("/api/v1/candidates/compare?blind_mode=false", json={"application_ids": app_ids}, headers=auth_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["candidates"]) == 2
+    assert "criteria_matrix" in data
+    assert len(data["criteria_matrix"]) >= 1
+    assert "executive_summary" in data
+    assert len(data["executive_summary"]) > 20
+
+    # Test blind mode comparison
+    res_blind = client.post("/api/v1/candidates/compare?blind_mode=true", json={"application_ids": app_ids}, headers=auth_headers)
+    assert res_blind.status_code == 200
+    blind_data = res_blind.json()
+    assert "Candidate #" in blind_data["candidates"][0]["candidate_name"]
+    assert blind_data["candidates"][0]["email"] is None
+
+    # Test validation: invalid candidate count
+    res_invalid = client.post("/api/v1/candidates/compare", json={"application_ids": [app_ids[0]]}, headers=auth_headers)
+    assert res_invalid.status_code == 422

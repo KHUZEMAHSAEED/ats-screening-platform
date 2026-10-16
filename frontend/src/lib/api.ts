@@ -11,6 +11,7 @@ import {
   RediscoveryResponse,
   WebhookSubscription,
   WebhookCreate,
+  CandidateComparisonResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
@@ -260,6 +261,14 @@ class ApiClient {
   async deleteWebhook(webhookId: string): Promise<void> {
     return this.request<void>(`/webhooks/${webhookId}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Side-by-Side Candidate Comparison
+  async compareCandidates(applicationIds: string[], blindMode = false): Promise<CandidateComparisonResponse> {
+    return this.request<CandidateComparisonResponse>(`/candidates/compare?blind_mode=${blindMode}`, {
+      method: 'POST',
+      body: JSON.stringify({ application_ids: applicationIds }),
     });
   }
 }

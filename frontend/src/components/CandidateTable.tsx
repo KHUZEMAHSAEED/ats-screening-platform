@@ -7,9 +7,18 @@ import { ArrowUpRight, CheckCircle2, AlertCircle, Clock, ShieldAlert } from 'luc
 interface CandidateTableProps {
   candidates: CandidateListItem[];
   isLoading?: boolean;
+  selectedIds?: string[];
+  onToggleSelect?: (appId: string) => void;
+  onSelectAll?: () => void;
 }
 
-export const CandidateTable: React.FC<CandidateTableProps> = ({ candidates, isLoading }) => {
+export const CandidateTable: React.FC<CandidateTableProps> = ({
+  candidates,
+  isLoading,
+  selectedIds = [],
+  onToggleSelect,
+  onSelectAll,
+}) => {
   if (isLoading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center rounded-xl border border-slate-200 bg-white p-8">
@@ -47,6 +56,17 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({ candidates, isLo
         <table className="w-full text-left text-sm text-slate-600">
           <thead className="border-b border-slate-200 bg-slate-50/75 text-xs font-semibold uppercase tracking-wider text-slate-500">
             <tr>
+              {onToggleSelect && (
+                <th scope="col" className="px-4 py-3.5 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all candidates on page"
+                    checked={candidates.length > 0 && selectedIds.length === candidates.length}
+                    onChange={onSelectAll}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                  />
+                </th>
+              )}
               <th scope="col" className="px-6 py-3.5">Candidate</th>
               <th scope="col" className="px-6 py-3.5">Job Opening</th>
               <th scope="col" className="px-6 py-3.5">Match Score</th>
@@ -62,9 +82,24 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({ candidates, isLo
               const scoreColor = getScoreColor(cand.overall_score);
               const recBadge = getRecommendationBadge(cand.recommendation_status);
               const decBadge = getDecisionBadge(cand.hr_decision);
+              const isSelected = selectedIds.includes(cand.application_id);
 
               return (
-                <tr key={cand.application_id} className="hover:bg-slate-50/70 transition-colors">
+                <tr
+                  key={cand.application_id}
+                  className={`transition-colors ${isSelected ? 'bg-indigo-50/70' : 'hover:bg-slate-50/70'}`}
+                >
+                  {onToggleSelect && (
+                    <td className="px-4 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select candidate ${cand.candidate_name}`}
+                        checked={isSelected}
+                        onChange={() => onToggleSelect(cand.application_id)}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                      />
+                    </td>
+                  )}
                   {/* Candidate Name & Identifier */}
                   <td className="px-6 py-4">
                     <div className="font-semibold text-slate-900">

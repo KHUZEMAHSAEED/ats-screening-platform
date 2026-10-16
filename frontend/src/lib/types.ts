@@ -211,3 +211,72 @@ export interface AuditLogItem {
   ip_address?: string;
   created_at: string;
 }
+
+export interface InterviewQuestionItem {
+  question: string;
+  category: string;
+  target_gap: string;
+  expected_answer: string;
+  suggested_rubric: string;
+}
+
+export interface InterviewGuideResponse {
+  id: string;
+  application_id: string;
+  candidate_id: string;
+  candidate_name: string;
+  job_title: string;
+  questions: InterviewQuestionItem[];
+  created_at: string;
+}
+
+export interface ComplianceMetricsResponse {
+  total_evaluated: number;
+  shortlisted_count: number;
+  selection_rate: number;
+  disparate_impact_ratio: number;
+  four_fifths_rule_status: 'COMPLIANT' | 'POTENTIAL_DISPARATE_IMPACT';
+  compliance_explanation: string;
+  recommendation_distribution: Record<string, number>;
+  decision_distribution: Record<string, number>;
+  regulatory_frameworks: string[];
+  audit_timestamp: string;
+}
+
+export interface RediscoveredCandidate {
+  candidate_id: string;
+  anonymized_id: string;
+  candidate_name: string;
+  email?: string;
+  original_job_title: string;
+  target_job_title: string;
+  match_score: number;
+  matched_mandatory: string[];
+  missing_mandatory: string[];
+  recommendation: string;
+  resume_id: string;
+}
+
+export interface RediscoveryResponse {
+  job_id: string;
+  job_title: string;
+  total_pool_evaluated: number;
+  matches_found: number;
+  candidates: RediscoveredCandidate[];
+}
+
+export interface WebhookSubscription {
+  id: string;
+  url: string;
+  secret: string;
+  event_types: string[];
+  is_active: boolean;
+  description?: string;
+  created_at: string;
+}
+
+export interface WebhookCreate {
+  url: string;
+  event_types: string[];
+  description?: string;
+}

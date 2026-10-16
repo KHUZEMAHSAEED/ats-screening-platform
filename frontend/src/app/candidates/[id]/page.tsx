@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CandidateDetail } from '@/lib/types';
+import { CandidateDetail, InterviewGuideResponse } from '@/lib/types';
 import { formatDate, getRecommendationBadge, getDecisionBadge, getScoreColor } from '@/lib/utils';
 import { ResumeViewer } from '@/components/ResumeViewer';
 import { ScoreBreakdown } from '@/components/ScoreBreakdown';
@@ -23,6 +23,13 @@ import {
   History,
   ShieldCheck,
   Send,
+  Eye,
+  EyeOff,
+  Sparkles,
+  HelpCircle,
+  RefreshCw,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export default function CandidateDetailPage() {
@@ -31,16 +38,20 @@ export default function CandidateDetailPage() {
   const applicationId = params?.id as string;
 
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null);
-  const [activeTab, setActiveTab] = useState<'screening' | 'profile' | 'notes' | 'audit'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'profile' | 'interviews' | 'notes' | 'audit'>('screening');
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
+  const [blindMode, setBlindMode] = useState(false);
+  const [interviewGuide, setInterviewGuide] = useState<InterviewGuideResponse | null>(null);
+  const [isLoadingGuide, setIsLoadingGuide] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [newNoteText, setNewNoteText] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = async (isBlind = blindMode) => {
     try {
       setIsLoading(true);
-      const data = await api.getCandidateDetail(applicationId);
+      const data = await api.getCandidateDetail(applicationId, isBlind);
       setCandidate(data);
     } catch (err) {
       console.error('Error loading candidate detail:', err);
@@ -49,11 +60,31 @@ export default function CandidateDetailPage() {
     }
   };
 
+  const loadInterviewGuide = async (regenerate = false) => {
+    try {
+      setIsLoadingGuide(true);
+      const guide = regenerate
+        ? await api.generateInterviewGuide(applicationId)
+        : await api.getInterviewGuide(applicationId);
+      setInterviewGuide(guide);
+    } catch (err) {
+      console.error('Failed to load interview guide:', err);
+    } finally {
+      setIsLoadingGuide(false);
+    }
+  };
+
   useEffect(() => {
     if (applicationId) {
-      loadData();
+      loadData(blindMode);
     }
-  }, [applicationId]);
+  }, [applicationId, blindMode]);
+
+  useEffect(() => {
+    if (activeTab === 'interviews' && !interviewGuide && applicationId) {
+      loadInterviewGuide();
+    }
+  }, [activeTab, applicationId]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +189,18 @@ export default function CandidateDetailPage() {
         {/* Human-in-the-Loop Action Bar */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            onClick={() => setBlindMode(!blindMode)}
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors shadow-sm ${
+              blindMode
+                ? 'bg-amber-600 border-amber-600 text-white hover:bg-amber-700'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title="Redact candidate names, emails, and university prestige to mitigate bias"
+          >
+            {blindMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4 text-slate-400" />}
+            {blindMode ? 'Blind Review Active' : 'Enable Blind Review'}
+          </button>
+          <button
             onClick={() => setIsDecisionModalOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors"
           >
@@ -168,10 +211,10 @@ export default function CandidateDetailPage() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200 overflow-x-auto">
         <button
           onClick={() => setActiveTab('screening')}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'screening'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -181,7 +224,7 @@ export default function CandidateDetailPage() {
         </button>
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'profile'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -190,8 +233,19 @@ export default function CandidateDetailPage() {
           Extracted Profile Facts
         </button>
         <button
+          onClick={() => setActiveTab('interviews')}
+          className={`flex items-center gap-1.5 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === 'interviews'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+          AI Interview Guide & Probes
+        </button>
+        <button
           onClick={() => setActiveTab('notes')}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'notes'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -201,7 +255,7 @@ export default function CandidateDetailPage() {
         </button>
         <button
           onClick={() => setActiveTab('audit')}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'audit'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -328,6 +382,120 @@ export default function CandidateDetailPage() {
           ) : (
             <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">
               No structured profile data extracted.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: AI Interview Guide & Probes */}
+      {activeTab === 'interviews' && (
+        <div className="space-y-6 max-w-4xl">
+          {/* Header & Regenerate action */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Adaptive Interview Question Synthesizer
+                </h3>
+              </div>
+              <p className="mt-1 text-xs text-slate-600">
+                AI-formulated interview questions targeting verified strengths, missing mandatory requirements, and timeline uncertainties with structured evaluation rubrics.
+              </p>
+            </div>
+            <button
+              onClick={() => loadInterviewGuide(true)}
+              disabled={isLoadingGuide}
+              className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoadingGuide ? 'animate-spin' : ''}`} />
+              {isLoadingGuide ? 'Synthesizing...' : 'Regenerate Probes'}
+            </button>
+          </div>
+
+          {isLoadingGuide ? (
+            <div className="flex min-h-[250px] items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                <span className="text-xs text-slate-500 font-medium">Synthesizing candidate interview probes...</span>
+              </div>
+            </div>
+          ) : interviewGuide?.questions && interviewGuide.questions.length > 0 ? (
+            <div className="space-y-4">
+              {interviewGuide.questions.map((q, idx) => {
+                const isCopied = copiedIdx === idx;
+                const isMissingReq = q.category.includes('Missing');
+                const isTimeline = q.category.includes('Timeline');
+                const badgeColor = isMissingReq
+                  ? 'bg-rose-50 border-rose-200 text-rose-700'
+                  : isTimeline
+                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700';
+
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3.5 transition-all hover:border-indigo-200"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-600">
+                          {idx + 1}
+                        </span>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-bold ${badgeColor}`}>
+                          {q.category}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-500">
+                          Target: <span className="text-slate-800">{q.target_gap}</span>
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(q.question);
+                          setCopiedIdx(idx);
+                          setTimeout(() => setCopiedIdx(null), 2000);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                      >
+                        {isCopied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                        {isCopied ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+
+                    <p className="text-sm font-semibold text-slate-900 leading-relaxed bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+                      &quot;{q.question}&quot;
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Expected Answer Criteria
+                        </div>
+                        <p className="text-slate-600 leading-relaxed">{q.expected_answer}</p>
+                      </div>
+
+                      <div className="rounded-xl border border-indigo-50 bg-indigo-50/30 p-3 space-y-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-700">
+                          Evaluation Rubric (1 - 5 Scale)
+                        </div>
+                        <p className="text-slate-600 leading-relaxed font-mono text-[11px]">{q.suggested_rubric}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-xs text-slate-500 space-y-3">
+              <p>No interview probes synthesized yet for this applicant.</p>
+              <button
+                onClick={() => loadInterviewGuide(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Synthesize Interview Guide
+              </button>
             </div>
           )}
         </div>

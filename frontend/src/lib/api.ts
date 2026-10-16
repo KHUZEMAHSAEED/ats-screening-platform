@@ -6,6 +6,11 @@ import {
   DashboardSummary,
   AuditLogItem,
   ScreeningCriteria,
+  ComplianceMetricsResponse,
+  InterviewGuideResponse,
+  RediscoveryResponse,
+  WebhookSubscription,
+  WebhookCreate,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
@@ -71,7 +76,7 @@ class ApiClient {
   }
 
   // Auth
-  async login(email: string, password: string):Promise<{ access_token: string; token_type: string }> {
+  async login(email: string, password: string): Promise<{ access_token: string; token_type: string }> {
     const data = await this.request<{ access_token: string; token_type: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -127,6 +132,7 @@ class ApiClient {
     search?: string;
     page?: number;
     page_size?: number;
+    blind_mode?: boolean;
   }): Promise<{ total: number; page: number; page_size: number; items: CandidateListItem[] }> {
     const query = new URLSearchParams();
     if (params.job_id) query.set('job_id', params.job_id);
@@ -136,14 +142,15 @@ class ApiClient {
     if (params.search) query.set('search', params.search);
     if (params.page) query.set('page', params.page.toString());
     if (params.page_size) query.set('page_size', params.page_size.toString());
+    if (params.blind_mode !== undefined) query.set('blind_mode', params.blind_mode.toString());
 
     return this.request<{ total: number; page: number; page_size: number; items: CandidateListItem[] }>(
       `/candidates?${query.toString()}`
     );
   }
 
-  async getCandidateDetail(applicationId: string): Promise<CandidateDetail> {
-    return this.request<CandidateDetail>(`/candidates/${applicationId}`);
+  async getCandidateDetail(applicationId: string, blindMode = false): Promise<CandidateDetail> {
+    return this.request<CandidateDetail>(`/candidates/${applicationId}?blind_mode=${blindMode}`);
   }
 
   // Upload
@@ -215,6 +222,45 @@ class ApiClient {
   getExportCsvUrl(jobId?: string): string {
     const query = jobId ? `?job_id=${jobId}` : '';
     return `${API_BASE}/export/candidates.csv${query}`;
+  }
+
+  // Compliance & Regulatory Audit
+  async getComplianceMetrics(): Promise<ComplianceMetricsResponse> {
+    return this.request<ComplianceMetricsResponse>('/compliance/metrics');
+  }
+
+  // AI Interview Guide Synthesizer
+  async getInterviewGuide(applicationId: string): Promise<InterviewGuideResponse> {
+    return this.request<InterviewGuideResponse>(`/interviews/${applicationId}`);
+  }
+
+  async generateInterviewGuide(applicationId: string): Promise<InterviewGuideResponse> {
+    return this.request<InterviewGuideResponse>(`/interviews/${applicationId}/generate`, {
+      method: 'POST',
+    });
+  }
+
+  // Talent Pool Rediscovery
+  async getTalentRediscovery(jobId: string, minScore = 50): Promise<RediscoveryResponse> {
+    return this.request<RediscoveryResponse>(`/rediscovery/${jobId}?min_score=${minScore}`);
+  }
+
+  // Enterprise Webhooks
+  async getWebhooks(): Promise<WebhookSubscription[]> {
+    return this.request<WebhookSubscription[]>('/webhooks');
+  }
+
+  async createWebhook(data: WebhookCreate): Promise<WebhookSubscription> {
+    return this.request<WebhookSubscription>('/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteWebhook(webhookId: string): Promise<void> {
+    return this.request<void>(`/webhooks/${webhookId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { CandidateListItem, Job } from '@/lib/types';
 import { CandidateTable } from '@/components/CandidateTable';
-import { Search, Download, Filter, RefreshCw } from 'lucide-react';
+import { Search, Download, Filter, RefreshCw, Eye, EyeOff, Shield } from 'lucide-react';
 
 export default function CandidatesDirectoryPage() {
   const [candidates, setCandidates] = useState<CandidateListItem[]>([]);
@@ -13,6 +13,7 @@ export default function CandidatesDirectoryPage() {
   const [selectedRecommendation, setSelectedRecommendation] = useState('');
   const [selectedDecision, setSelectedDecision] = useState('');
   const [search, setSearch] = useState('');
+  const [blindMode, setBlindMode] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +28,7 @@ export default function CandidatesDirectoryPage() {
         recommendation_status: selectedRecommendation || undefined,
         hr_decision: selectedDecision || undefined,
         search: search || undefined,
+        blind_mode: blindMode,
         page,
         page_size: pageSize,
       });
@@ -45,7 +47,7 @@ export default function CandidatesDirectoryPage() {
 
   useEffect(() => {
     fetchCandidates();
-  }, [selectedJob, selectedRecommendation, selectedDecision, page]);
+  }, [selectedJob, selectedRecommendation, selectedDecision, blindMode, page]);
 
   return (
     <div className="space-y-6">
@@ -61,6 +63,18 @@ export default function CandidatesDirectoryPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setBlindMode(!blindMode)}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-sm transition-colors border ${
+              blindMode
+                ? 'bg-amber-600 border-amber-600 text-white hover:bg-amber-700'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            title="Redact candidate names, emails, and contact details to mitigate unconscious demographic bias"
+          >
+            {blindMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4 text-slate-400" />}
+            {blindMode ? 'Blind Review Active' : 'Enable Blind Review'}
+          </button>
           <a
             href={api.getExportCsvUrl(selectedJob)}
             target="_blank"
@@ -79,6 +93,17 @@ export default function CandidatesDirectoryPage() {
           </button>
         </div>
       </div>
+
+      {/* Blind Screening Advisory Banner */}
+      {blindMode && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900 shadow-sm">
+          <Shield className="h-4 w-4 text-amber-600 shrink-0" />
+          <div>
+            <span className="font-bold">Blind Screening Active (EEOC & OFCCP De-Biasing Mode): </span>
+            Candidate personal identifying information (full name, email, phone) has been masked with anonymized tokens to enforce pure merit-based evaluation during first-round screening.
+          </div>
+        </div>
+      )}
 
       {/* Filter Toolbar */}
       <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">

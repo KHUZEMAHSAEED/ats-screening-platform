@@ -1,0 +1,17 @@
+from fastapi import APIRouter
+from app.api.v1.endpoints import (
+    auth, jobs, resumes, candidates, decisions, notes, audit, export, stats, matching
+)
+
+api_router = APIRouter()
+
+api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(jobs.router, prefix="/jobs", tags=["Job Openings"])
+api_router.include_router(resumes.router, prefix="/resumes", tags=["Resumes"])
+api_router.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
+api_router.include_router(decisions.router, prefix="/applications", tags=["HR Decisions"])
+api_router.include_router(notes.router, prefix="/applications", tags=["Candidate Notes"])
+api_router.include_router(matching.router, prefix="/matching", tags=["Matching Engine"])
+api_router.include_router(stats.router, prefix="/stats", tags=["Dashboard Statistics"])
+api_router.include_router(audit.router, prefix="/audit", tags=["Audit Trail"])
+api_router.include_router(export.router, prefix="/export", tags=["Export"])

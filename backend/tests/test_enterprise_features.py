@@ -276,5 +276,39 @@ def test_security_audit_ssrf_and_containment(client, auth_headers):
     }, headers=auth_headers)
     assert valid_res.status_code == 201
 
+def test_job_calibration_and_active_learning(client, auth_headers):
+    # 1. Fetch available job
+    jobs = client.get("/api/v1/jobs", headers=auth_headers).json()["items"]
+    assert len(jobs) >= 1
+    job_id = jobs[0]["id"]
+
+    # 2. Get calibration analysis
+    calib_res = client.get(f"/api/v1/calibration/{job_id}", headers=auth_headers)
+    assert calib_res.status_code == 200
+    data = calib_res.json()
+    assert data["job_id"] == job_id
+    assert "current_weights" in data
+    assert "recommended_weights" in data
+    assert "weight_deltas" in data
+    assert len(data["weight_deltas"]) == 4
+    assert sum(data["recommended_weights"].values()) == pytest.approx(100.0, abs=0.5)
+
+    # 3. Apply calibrated weights with candidate re-evaluation
+    apply_res = client.post(f"/api/v1/calibration/{job_id}/apply", json={
+        "reevaluate_candidates": True
+    }, headers=auth_headers)
+    assert apply_res.status_code == 200
+    apply_data = apply_res.json()
+    assert apply_data["job_id"] == job_id
+    assert sum(apply_data["new_weights"].values()) == pytest.approx(100.0, abs=0.5)
+
+    # 4. Check audit log was recorded
+    audit_res = client.get(f"/api/v1/audit?action=CRITERIA_WEIGHTS_CALIBRATED", headers=auth_headers)
+    assert audit_res.status_code == 200
+    items = audit_res.json()["items"]
+    assert len(items) >= 1
+    assert items[0]["action"] == "CRITERIA_WEIGHTS_CALIBRATED"
+
+
 
 

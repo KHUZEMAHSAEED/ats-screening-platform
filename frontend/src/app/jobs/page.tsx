@@ -4,8 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Job, ScreeningCriteria, RediscoveryResponse } from '@/lib/types';
+import { Job, ScreeningCriteria, RediscoveryResponse, JobCalibrationAnalysisResponse } from '@/lib/types';
 import { CriteriaBuilder } from '@/components/CriteriaBuilder';
+import { CalibrationModal } from '@/components/CalibrationModal';
 import {
   Briefcase,
   Plus,
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   X,
   Sliders,
+  SlidersHorizontal,
   Calendar,
   Sparkles,
   ExternalLink,
@@ -38,6 +40,33 @@ function JobsManagementContent() {
   const [rediscoveryData, setRediscoveryData] = useState<RediscoveryResponse | null>(null);
   const [isLoadingRediscovery, setIsLoadingRediscovery] = useState(false);
   const [minRediscoveryScore, setMinRediscoveryScore] = useState(30);
+
+  // Active Learning & Calibration State
+  const [calibrationJob, setCalibrationJob] = useState<Job | null>(null);
+  const [calibrationData, setCalibrationData] = useState<JobCalibrationAnalysisResponse | null>(null);
+  const [isLoadingCalibration, setIsLoadingCalibration] = useState(false);
+  const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
+
+  const openCalibration = async (job: Job) => {
+    try {
+      setCalibrationJob(job);
+      setIsCalibrationOpen(true);
+      setIsLoadingCalibration(true);
+      const res = await api.getJobCalibration(job.id);
+      setCalibrationData(res);
+    } catch (err: any) {
+      console.error('Failed to load job calibration:', err);
+      alert('Failed to load calibration analytics: ' + err.message);
+    } finally {
+      setIsLoadingCalibration(false);
+    }
+  };
+
+  const handleApplyCalibratedWeights = async (reevaluate: boolean) => {
+    if (!calibrationJob) return;
+    await api.applyCalibratedWeights(calibrationJob.id, reevaluate);
+    await fetchJobs();
+  };
 
   // Form State
   const [title, setTitle] = useState('');
@@ -259,6 +288,14 @@ function JobsManagementContent() {
                   >
                     <Sparkles className="h-3 w-3 text-purple-600" />
                     Rediscover Talent
+                  </button>
+                  <button
+                    onClick={() => openCalibration(job)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-1.5 font-semibold text-indigo-700 hover:bg-indigo-100 shadow-sm transition-colors"
+                    title="Active learning advisor to calibrate screening criteria weights"
+                  >
+                    <SlidersHorizontal className="h-3 w-3 text-indigo-600" />
+                    Calibration Advisor
                   </button>
                   <button
                     onClick={() => handleReEvaluate(job.id)}
@@ -544,6 +581,15 @@ function JobsManagementContent() {
           </div>
         </div>
       )}
+
+      {/* Active Learning Calibration Advisor Modal */}
+      <CalibrationModal
+        isOpen={isCalibrationOpen}
+        onClose={() => setIsCalibrationOpen(false)}
+        data={calibrationData}
+        isLoading={isLoadingCalibration}
+        onApply={handleApplyCalibratedWeights}
+      />
     </div>
   );
 }

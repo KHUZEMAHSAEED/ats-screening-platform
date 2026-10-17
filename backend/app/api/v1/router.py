@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, jobs, resumes, candidates, decisions, notes, audit, export, stats, matching,
-    compliance, interviews, webhooks, rediscovery, communications, llm_analysis
+    compliance, interviews, webhooks, rediscovery, communications, llm_analysis, calibration
 )
 
 api_router = APIRouter()
@@ -22,4 +22,6 @@ api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Enterprise
 api_router.include_router(rediscovery.router, prefix="/rediscovery", tags=["Talent Rediscovery"])
 api_router.include_router(communications.router, prefix="/communications", tags=["Candidate Communications"])
 api_router.include_router(llm_analysis.router, prefix="/ai-analysis", tags=["AI Hybrid Reasoning"])
+api_router.include_router(calibration.router, prefix="/calibration", tags=["Active Learning & Calibration"])
+
 

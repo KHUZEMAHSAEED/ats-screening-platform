@@ -381,3 +381,52 @@ export interface LLMAnalysisResponse {
   analyzed_at: string;
 }
 
+export interface ReviewerMetricItem {
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  total_reviews: number;
+  shortlist_count: number;
+  reject_count: number;
+  override_count: number;
+  override_rate: number;
+  avg_accepted_score: number;
+  strictness_index: string;
+}
+
+export interface WeightDeltaItem {
+  criterion: string;
+  label: string;
+  current_weight: number;
+  recommended_weight: number;
+  delta: number;
+  direction: 'increase' | 'decrease' | 'neutral';
+  rationale: string;
+}
+
+export interface JobCalibrationAnalysisResponse {
+  job_id: string;
+  job_title: string;
+  total_decisions: number;
+  alignment_rate: number;
+  override_rate: number;
+  current_weights: Record<string, number>;
+  recommended_weights: Record<string, number>;
+  estimated_alignment_gain: number;
+  executive_rationale: string;
+  weight_deltas: WeightDeltaItem[];
+  reviewer_metrics: ReviewerMetricItem[];
+}
+
+export interface ApplyCalibratedWeightsRequest {
+  reevaluate_candidates: boolean;
+}
+
+export interface ApplyCalibratedWeightsResponse {
+  job_id: string;
+  new_weights: Record<string, number>;
+  candidates_reevaluated: number;
+  message: string;
+}
+
+

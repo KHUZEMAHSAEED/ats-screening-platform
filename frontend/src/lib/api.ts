@@ -17,6 +17,8 @@ import {
   SendEmailRequest,
   CommunicationLogResponse,
   LLMAnalysisResponse,
+  JobCalibrationAnalysisResponse,
+  ApplyCalibratedWeightsResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
@@ -304,6 +306,18 @@ class ApiClient {
   async regenerateAIAnalysis(applicationId: string): Promise<LLMAnalysisResponse> {
     return this.request<LLMAnalysisResponse>(`/ai-analysis/${applicationId}/regenerate`, {
       method: 'POST',
+    });
+  }
+
+  // Active Learning & Recruiter Calibration Advisor
+  async getJobCalibration(jobId: string): Promise<JobCalibrationAnalysisResponse> {
+    return this.request<JobCalibrationAnalysisResponse>(`/calibration/${jobId}`);
+  }
+
+  async applyCalibratedWeights(jobId: string, reevaluate = false): Promise<ApplyCalibratedWeightsResponse> {
+    return this.request<ApplyCalibratedWeightsResponse>(`/calibration/${jobId}/apply`, {
+      method: 'POST',
+      body: JSON.stringify({ reevaluate_candidates: reevaluate }),
     });
   }
 }

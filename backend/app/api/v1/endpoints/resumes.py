@@ -198,8 +198,17 @@ def get_resume_file(
     if not os.path.exists(resume.file_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume file missing from storage.")
 
+    # Defense in depth: Verify file path is strictly contained within designated upload directory
+    real_path = os.path.realpath(resume.file_path)
+    upload_dir_real = os.path.realpath(str(settings.UPLOAD_DIR))
+    if not real_path.startswith(upload_dir_real):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: File outside permitted storage directory."
+        )
+
     return FileResponse(
-        path=resume.file_path,
+        path=real_path,
         filename=resume.original_filename,
         media_type=resume.mime_type
     )

@@ -250,4 +250,31 @@ def test_ai_deep_analysis_and_injection_defense(client, auth_headers):
     assert regen_res.status_code == 200
     assert regen_res.json()["application_id"] == app_id
 
+def test_security_audit_ssrf_and_containment(client, auth_headers):
+    # 1. SSRF Protection: Attempt to subscribe to AWS IMDS metadata service
+    imds_res = client.post("/api/v1/webhooks", json={
+        "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials",
+        "event_types": ["*"],
+        "description": "SSRF test"
+    }, headers=auth_headers)
+    assert imds_res.status_code == 400
+    assert "Cloud metadata" in imds_res.json()["detail"]
+
+    # 2. SSRF Protection: Attempt to subscribe to GCP metadata service
+    gcp_res = client.post("/api/v1/webhooks", json={
+        "url": "http://metadata.google.internal/computeMetadata/v1",
+        "event_types": ["*"],
+        "description": "GCP metadata test"
+    }, headers=auth_headers)
+    assert gcp_res.status_code == 400
+
+    # 3. Valid webhook destination succeeds
+    valid_res = client.post("/api/v1/webhooks", json={
+        "url": "https://api.partner-ats.com/webhooks/listener",
+        "event_types": ["candidate.screened"],
+        "description": "Legitimate enterprise subscriber"
+    }, headers=auth_headers)
+    assert valid_res.status_code == 201
+
+
 

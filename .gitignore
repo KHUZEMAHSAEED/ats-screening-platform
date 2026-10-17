@@ -1,25 +1,57 @@
-# Virtual Environment
+# ==============================================================================
+# TALENTFILTER AI - ENTERPRISE GITIGNORE
+# Ensures all local configurations, secrets, keys, and environments are never committed
+# ==============================================================================
+
+# 1. Environment & Secret Configurations (Strict Protection)
+.env
+.env.*
+.env*.local
+*.env
+!.env.example
+
+# 2. Cryptographic Keys, Certificates & Cloud Credentials
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+credentials.json
+client_secret*.json
+service_account*.json
+
+# 3. Python Virtual Environments
 venv/
 backend/venv/
 .venv/
 env/
+ENV/
 
-# Python cache & artifacts
+# 4. Python Cache, Bytecode & Testing Artifacts
 __pycache__/
+*/__pycache__/
 *.py[cod]
 *$py.class
 *.so
 .pytest_cache/
 backend/.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# Databases & local uploads
+# 5. Databases, Storage & Local Uploads
 *.db
+*.db-*
 *.sqlite
-backend/ats.db
+*.sqlite3
+*.sqlite-*
+backend/ats.db*
 backend/uploads/
 uploads/
 
-# Node.js & Next.js build
+# 6. Node.js & Next.js Build Outputs
 node_modules/
 frontend/node_modules/
 frontend/.next/
@@ -28,12 +60,16 @@ out/
 build/
 dist/
 
-# Logs & Environment
+# 7. System, Logs & Editor Artifacts
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.env
-.env.local
-.env.production
+pnpm-debug.log*
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+scratch/

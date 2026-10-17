@@ -6,15 +6,15 @@ services:
     container_name: ats_postgres
     restart: always
     environment:
-      POSTGRES_USER: ats_user
-      POSTGRES_PASSWORD: ats_secure_password_2026
-      POSTGRES_DB: ats_database
+      POSTGRES_USER: ${POSTGRES_USER:-ats_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ats_secure_password_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-ats_database}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ats_user -d ats_database"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-ats_user} -d $${POSTGRES_DB:-ats_database}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -39,13 +39,20 @@ services:
     container_name: ats_backend
     restart: always
     environment:
-      - DATABASE_URL=postgresql://ats_user:ats_secure_password_2026@db:5432/ats_database
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=ats_jwt_super_secret_production_key_change_in_env_2026
-      - USE_IN_PROCESS_TASKS=false
-      - ENABLE_OCR=true
-      - ENABLE_LLM_ENRICHMENT=false
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ats_user}:${POSTGRES_PASSWORD:-ats_secure_password_2026}@db:5432/${POSTGRES_DB:-ats_database}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SECRET_KEY=${SECRET_KEY:-ats-super-secret-production-key-change-in-env-2026}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-admin@example.com}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-AdminPass123!}
+      - USE_IN_PROCESS_TASKS=${USE_IN_PROCESS_TASKS:-false}
+      - ENABLE_OCR=${ENABLE_OCR:-true}
+      - ENABLE_LLM_ENRICHMENT=${ENABLE_LLM_ENRICHMENT:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
       - UPLOAD_DIR=/app/uploads
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     ports:
       - "8000:8000"
     volumes:
@@ -66,11 +73,16 @@ services:
     restart: always
     command: ["celery", "-A", "app.services.queue.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
     environment:
-      - DATABASE_URL=postgresql://ats_user:ats_secure_password_2026@db:5432/ats_database
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=ats_jwt_super_secret_production_key_change_in_env_2026
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ats_user}:${POSTGRES_PASSWORD:-ats_secure_password_2026}@db:5432/${POSTGRES_DB:-ats_database}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SECRET_KEY=${SECRET_KEY:-ats-super-secret-production-key-change-in-env-2026}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
       - USE_IN_PROCESS_TASKS=false
-      - ENABLE_OCR=true
+      - ENABLE_OCR=${ENABLE_OCR:-true}
+      - ENABLE_LLM_ENRICHMENT=${ENABLE_LLM_ENRICHMENT:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
       - UPLOAD_DIR=/app/uploads
     volumes:
       - resume_uploads:/app/uploads
@@ -89,7 +101,7 @@ services:
     container_name: ats_frontend
     restart: always
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
     ports:
       - "3000:3000"
     depends_on:

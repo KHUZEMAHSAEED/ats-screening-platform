@@ -22,19 +22,19 @@ async def lifespan(app: FastAPI):
     # Seed default HR Admin user if database is empty
     db = SessionLocal()
     try:
-        admin_email = "admin@example.com"
+        admin_email = settings.INITIAL_ADMIN_EMAIL
         existing_admin = db.query(User).filter(User.email == admin_email).first()
         if not existing_admin:
             admin_user = User(
                 email=admin_email,
-                hashed_password=get_password_hash("AdminPass123!"),
+                hashed_password=get_password_hash(settings.INITIAL_ADMIN_PASSWORD),
                 full_name="HR Operations Lead",
                 role=UserRole.HR_ADMIN.value,
                 is_active=True
             )
             db.add(admin_user)
             db.commit()
-            logger.info("Seeded default HR Admin user: admin@example.com")
+            logger.info(f"Seeded default HR Admin user: {admin_email}")
     finally:
         db.close()
     yield

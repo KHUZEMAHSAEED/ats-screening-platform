@@ -7,6 +7,7 @@ from app.core.security import require_hr_role
 from app.models import WebhookSubscription, User
 from app.schemas.webhook import WebhookCreate, WebhookResponse
 from app.services.audit_service import log_audit_event
+from app.services.webhook_service import is_safe_webhook_url
 
 router = APIRouter()
 
@@ -23,6 +24,13 @@ def create_webhook(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_hr_role)
 ):
+    url_str = str(hook_in.url)
+    if not is_safe_webhook_url(url_str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook destination URL: Cloud metadata addresses and unroutable endpoints are blocked."
+        )
+
     secret = secrets.token_hex(24)
     webhook = WebhookSubscription(
         url=str(hook_in.url),

@@ -16,6 +16,7 @@ import {
   EmailPreviewResponse,
   SendEmailRequest,
   CommunicationLogResponse,
+  LLMAnalysisResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
@@ -293,6 +294,17 @@ class ApiClient {
 
   async getCandidateCommunications(applicationId: string): Promise<CommunicationLogResponse[]> {
     return this.request<CommunicationLogResponse[]>(`/communications/${applicationId}`);
+  }
+
+  // AI Hybrid Reasoning Engine
+  async getAIAnalysis(applicationId: string): Promise<LLMAnalysisResponse> {
+    return this.request<LLMAnalysisResponse>(`/ai-analysis/${applicationId}`);
+  }
+
+  async regenerateAIAnalysis(applicationId: string): Promise<LLMAnalysisResponse> {
+    return this.request<LLMAnalysisResponse>(`/ai-analysis/${applicationId}/regenerate`, {
+      method: 'POST',
+    });
   }
 }
 

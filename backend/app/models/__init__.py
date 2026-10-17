@@ -170,6 +170,7 @@ class JobApplication(Base):
     audit_logs = relationship("AuditLog", back_populates="application", cascade="all, delete-orphan")
     interview_guides = relationship("InterviewGuide", back_populates="application", cascade="all, delete-orphan")
     communications = relationship("CommunicationLog", back_populates="application", cascade="all, delete-orphan", order_by="desc(CommunicationLog.sent_at)")
+    ai_analysis = relationship("AIAnalysisReport", back_populates="application", uselist=False, cascade="all, delete-orphan")
 
 class MatchResult(Base):
     __tablename__ = "match_results"
@@ -284,3 +285,15 @@ class CommunicationLog(Base):
 
     application = relationship("JobApplication", back_populates="communications")
     sender = relationship("User")
+
+class AIAnalysisReport(Base):
+    __tablename__ = "ai_analysis_reports"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    application_id = Column(String(36), ForeignKey("job_applications.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    report_data = Column(JSON, default=dict)
+    provider_used = Column(String(50), default="rule_based_fallback")
+    prompt_injection_flag = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    application = relationship("JobApplication", back_populates="ai_analysis")

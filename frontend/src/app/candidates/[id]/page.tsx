@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CandidateDetail, InterviewGuideResponse, CommunicationLogResponse } from '@/lib/types';
+import { CandidateDetail, InterviewGuideResponse, CommunicationLogResponse, LLMAnalysisResponse } from '@/lib/types';
 import { formatDate, getRecommendationBadge, getDecisionBadge, getScoreColor } from '@/lib/utils';
 import { ResumeViewer } from '@/components/ResumeViewer';
 import { ScoreBreakdown } from '@/components/ScoreBreakdown';
@@ -32,6 +32,10 @@ import {
   Copy,
   Check,
   Mail,
+  BrainCircuit,
+  ShieldAlert,
+  AlertTriangle,
+  Quote,
 } from 'lucide-react';
 
 export default function CandidateDetailPage() {
@@ -40,12 +44,14 @@ export default function CandidateDetailPage() {
   const applicationId = params?.id as string;
 
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null);
-  const [activeTab, setActiveTab] = useState<'screening' | 'profile' | 'interviews' | 'notes' | 'comms' | 'audit'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'profile' | 'ai_analysis' | 'interviews' | 'notes' | 'comms' | 'audit'>('screening');
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
   const [interviewGuide, setInterviewGuide] = useState<InterviewGuideResponse | null>(null);
   const [isLoadingGuide, setIsLoadingGuide] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<LLMAnalysisResponse | null>(null);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [communications, setCommunications] = useState<CommunicationLogResponse[]>([]);
   const [isLoadingComms, setIsLoadingComms] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
@@ -91,6 +97,20 @@ export default function CandidateDetailPage() {
     }
   };
 
+  const loadAIAnalysis = async (regenerate = false) => {
+    try {
+      setIsLoadingAnalysis(true);
+      const data = regenerate
+        ? await api.regenerateAIAnalysis(applicationId)
+        : await api.getAIAnalysis(applicationId);
+      setAiAnalysis(data);
+    } catch (err) {
+      console.error('Failed to load AI deep analysis:', err);
+    } finally {
+      setIsLoadingAnalysis(false);
+    }
+  };
+
   useEffect(() => {
     if (applicationId) {
       loadData(blindMode);
@@ -99,7 +119,9 @@ export default function CandidateDetailPage() {
   }, [applicationId, blindMode]);
 
   useEffect(() => {
-    if (activeTab === 'interviews' && !interviewGuide && applicationId) {
+    if (activeTab === 'ai_analysis' && !aiAnalysis && applicationId) {
+      loadAIAnalysis();
+    } else if (activeTab === 'interviews' && !interviewGuide && applicationId) {
       loadInterviewGuide();
     } else if (activeTab === 'comms' && applicationId) {
       loadCommunications();
@@ -259,6 +281,17 @@ export default function CandidateDetailPage() {
           }`}
         >
           Extracted Profile Facts
+        </button>
+        <button
+          onClick={() => setActiveTab('ai_analysis')}
+          className={`flex items-center gap-1.5 border-b-2 px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === 'ai_analysis'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <BrainCircuit className="h-3.5 w-3.5 text-indigo-600" />
+          AI Deep Reasoning & Defense
         </button>
         <button
           onClick={() => setActiveTab('interviews')}
@@ -421,6 +454,260 @@ export default function CandidateDetailPage() {
           ) : (
             <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">
               No structured profile data extracted.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: AI Deep Reasoning & Defense */}
+      {activeTab === 'ai_analysis' && (
+        <div className="space-y-6 max-w-5xl">
+          {/* Header & Regenerate action */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-white p-5 shadow-sm">
+            <div>
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Real-time LLM Hybrid Reasoning Engine
+                </h3>
+              </div>
+              <p className="mt-1 text-xs text-slate-600 max-w-2xl">
+                Deep qualitative analysis of candidate narrative, verifiable competency proofs with quote attribution, architectural depth scoring, and untrusted prompt injection defense.
+              </p>
+            </div>
+            <button
+              onClick={() => loadAIAnalysis(true)}
+              disabled={isLoadingAnalysis}
+              className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoadingAnalysis ? 'animate-spin' : ''}`} />
+              {isLoadingAnalysis ? 'Synthesizing...' : 'Re-analyze Candidate'}
+            </button>
+          </div>
+
+          {isLoadingAnalysis ? (
+            <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-slate-200 bg-white p-12">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                <span className="text-xs font-semibold text-slate-600">
+                  Evaluating qualitative narrative & inspecting prompt injection vectors...
+                </span>
+              </div>
+            </div>
+          ) : aiAnalysis ? (
+            <div className="space-y-6">
+              {/* Security & Regulatory Banners */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Prompt Injection Defense Status */}
+                {aiAnalysis.prompt_injection_detected ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-4 flex items-start gap-3">
+                    <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold text-rose-900">
+                        Adversarial Prompt Injection Vector Detected
+                      </h4>
+                      <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">
+                        The candidate document contained malicious prompt override commands. Automated instructions have been neutralized; candidate technical assessment was quarantined.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 flex items-start gap-3">
+                    <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-950">
+                        Prompt Injection Defense: Verified Clean
+                      </h4>
+                      <p className="mt-0.5 text-xs text-emerald-800 leading-relaxed">
+                        Document passed untrusted input sanitization. No adversarial instructions or prompt override attempts detected.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Regulatory Safe-Harbor Anchor Note */}
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-950">
+                      EEOC & EU AI Act Safe-Harbor Anchor
+                    </h4>
+                    <p className="mt-0.5 text-[11px] text-amber-800 leading-relaxed">
+                      Deterministic score ({candidate.match_result?.overall_score || 0}%) remains the legally binding regulatory anchor. This LLM hybrid layer provides qualitative telemetry without altering the deterministic score.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Executive Summary & Technical Depth Score */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 pb-5">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Executive Assessment & Strategic Fit
+                    </div>
+                    <p className="text-sm text-slate-800 leading-relaxed">
+                      {aiAnalysis.executive_summary}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] text-slate-500">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono font-medium text-slate-700">
+                        Provider: {aiAnalysis.provider_used}
+                      </span>
+                      <span>·</span>
+                      <span>Analyzed: {formatDate(aiAnalysis.analyzed_at)}</span>
+                    </div>
+                  </div>
+
+                  {/* Depth Score Gauge */}
+                  <div className="lg:w-72 shrink-0 rounded-xl border border-indigo-50 bg-indigo-50/30 p-4 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700">Technical Depth Score</span>
+                      <span className="text-base font-extrabold text-indigo-700">
+                        {aiAnalysis.technical_depth_score}
+                        <span className="text-xs font-semibold text-slate-400"> / 100</span>
+                      </span>
+                    </div>
+
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(0, aiAnalysis.technical_depth_score))}%` }}
+                      />
+                    </div>
+
+                    <div className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
+                      <span>Tier Assessment:</span>
+                      <span className="font-bold text-indigo-800">
+                        {aiAnalysis.technical_depth_score >= 80
+                          ? 'Architectural Scale & Mastery'
+                          : aiAnalysis.technical_depth_score >= 60
+                          ? 'Senior Production Depth'
+                          : 'Foundational Proficiency'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verified Competency Proofs */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      Verified Competency Proofs ({aiAnalysis.verified_competencies.length})
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      Evidence-backed quote extraction directly from resume text
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {aiAnalysis.verified_competencies.map((proof, idx) => {
+                      const isExpert = proof.depth_level.includes('Expert') || proof.depth_level.includes('Architectural');
+                      const isProficient = proof.depth_level.includes('Proficient');
+                      const depthBadge = isExpert
+                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                        : isProficient
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200';
+
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-xl border border-slate-200 bg-white p-4 space-y-2.5 shadow-sm hover:border-indigo-200 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-slate-900 text-xs">
+                              {proof.skill}
+                            </span>
+                            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${depthBadge}`}>
+                              {proof.depth_level}
+                            </span>
+                          </div>
+
+                          <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100 text-xs text-slate-700 leading-relaxed italic flex items-start gap-1.5">
+                            <Quote className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                            <span>&quot;{proof.evidence_quote}&quot;</span>
+                          </div>
+
+                          {proof.context_source && (
+                            <div className="text-[10px] font-medium text-slate-400">
+                              Source: {proof.context_source}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Achievements & Risk Factors 2-Col Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2">
+                  {/* Key Quantified Achievements */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      Quantified Business & Engineering Outcomes
+                    </div>
+                    <ul className="space-y-2 text-xs text-slate-700">
+                      {aiAnalysis.key_achievements.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
+                          <span className="leading-relaxed">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Potential Risk Factors */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 uppercase tracking-wider">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      Potential Gaps & Verification Risks
+                    </div>
+                    <ul className="space-y-2 text-xs text-slate-700">
+                      {aiAnalysis.potential_risk_factors.map((risk, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                          <span className="leading-relaxed">{risk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Strategic Interview Focus */}
+                {aiAnalysis.recommended_interview_focus?.length > 0 && (
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-2.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-900">
+                      Recommended Strategic Interview Focus Areas
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {aiAnalysis.recommended_interview_focus.map((focus, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-lg bg-white p-3 border border-indigo-100/70 text-xs text-slate-700 space-y-1 shadow-sm"
+                        >
+                          <div className="font-bold text-indigo-700 text-[11px]">
+                            Focus Area #{idx + 1}
+                          </div>
+                          <p className="leading-relaxed">{focus}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-xs text-slate-500 space-y-3">
+              <p>No qualitative AI analysis generated yet for this applicant.</p>
+              <button
+                onClick={() => loadAIAnalysis(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
+              >
+                <BrainCircuit className="h-4 w-4" />
+                Run AI Deep Analysis
+              </button>
             </div>
           )}
         </div>

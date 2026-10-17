@@ -23,16 +23,18 @@ def test_duplicate_resume_detection(client, auth_headers):
     jobs = client.get("/api/v1/jobs", headers=auth_headers).json()["items"]
     job_id = jobs[0]["id"]
     
-    # Create synthetic test PDF
-    pdf_content = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF"
-    file_tuple = ("files", ("test_candidate_dup.pdf", io.BytesIO(pdf_content), "application/pdf"))
+    # Create synthetic test PDF with unique run marker for test isolation
+    import uuid
+    unique_run = str(uuid.uuid4())
+    pdf_content = f"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Run '{unique_run}' >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF".encode("utf-8")
+    file_tuple = ("files", (f"test_dup_{unique_run[:8]}.pdf", io.BytesIO(pdf_content), "application/pdf"))
 
     # Upload first time
     res1 = client.post("/api/v1/resumes/upload", data={"job_id": job_id}, files=[file_tuple], headers=auth_headers)
     assert res1.status_code == 200
 
     # Upload exact same bytes again for the same job
-    file_tuple2 = ("files", ("test_candidate_dup.pdf", io.BytesIO(pdf_content), "application/pdf"))
+    file_tuple2 = ("files", (f"test_dup_{unique_run[:8]}.pdf", io.BytesIO(pdf_content), "application/pdf"))
     res2 = client.post("/api/v1/resumes/upload", data={"job_id": job_id}, files=[file_tuple2], headers=auth_headers)
     assert res2.status_code == 200
     data2 = res2.json()

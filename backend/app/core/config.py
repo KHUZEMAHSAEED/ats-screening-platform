@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # AI / LLM Configuration (Optional & Configurable)
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY", None)
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
     ENABLE_LLM_ENRICHMENT: bool = os.getenv("ENABLE_LLM_ENRICHMENT", "false").lower() == "true"
 

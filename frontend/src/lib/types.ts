@@ -357,3 +357,27 @@ export interface CommunicationLogResponse {
   sent_at: string;
   sender_name?: string;
 }
+
+export interface LLMCompetencyProof {
+  skill: string;
+  evidence_quote: string;
+  depth_level: string;
+  context_source?: string;
+}
+
+export interface LLMAnalysisResponse {
+  application_id: string;
+  candidate_id: string;
+  candidate_name?: string;
+  job_title: string;
+  executive_summary: string;
+  technical_depth_score: number;
+  verified_competencies: LLMCompetencyProof[];
+  potential_risk_factors: string[];
+  key_achievements: string[];
+  recommended_interview_focus: string[];
+  prompt_injection_detected: boolean;
+  provider_used: string;
+  analyzed_at: string;
+}
+

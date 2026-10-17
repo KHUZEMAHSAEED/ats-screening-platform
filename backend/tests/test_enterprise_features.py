@@ -140,6 +140,14 @@ def test_talent_rediscovery(client, auth_headers):
 
 def test_candidate_comparison_matrix(client, auth_headers):
     candidates = client.get("/api/v1/candidates", headers=auth_headers).json()["items"]
+    if len(candidates) < 2:
+        import io, uuid
+        jobs = client.get("/api/v1/jobs", headers=auth_headers).json()["items"]
+        job_id = jobs[0]["id"]
+        pdf_content = f"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Run '{uuid.uuid4()}' >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF".encode("utf-8")
+        file_tuple = ("files", (f"cand_compare_{uuid.uuid4().hex[:6]}.pdf", io.BytesIO(pdf_content), "application/pdf"))
+        client.post("/api/v1/resumes/upload", data={"job_id": job_id}, files=[file_tuple], headers=auth_headers)
+        candidates = client.get("/api/v1/candidates", headers=auth_headers).json()["items"]
     assert len(candidates) >= 2
     app_ids = [candidates[0]["application_id"], candidates[1]["application_id"]]
 
